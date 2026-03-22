@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART QA FACTORY - Audit App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: #28a745; }
+        .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: none; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">🛡️ SMART QA FACTORY - Audit Management</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        📝 บันทึกผลการตรวจ (New Audit)
+                    </div>
+                    <div class="card-body">
+                        <form id="auditForm">
+                            <div class="mb-3">
+                                <label class="form-label">กระบวนการ (Process)</label>
+                                <select class="form-select" id="processSelect" required>
+                                    <option value="">-- เลือกกระบวนการ --</option>
+                                    <option value="PC0001 - รับวัตถุดิบ">PC0001 - รับวัตถุดิบ</option>
+                                    <option value="PC0007 - ลดขนาด 3">PC0007 - ลดขนาด 3</option>
+                                    <option value="PC0009 - นวดผสม">PC0009 - นวดผสม</option>
+                                    <option value="PC0011 - บ่ม / หมัก">PC0011 - บ่ม / หมัก</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">จุดตรวจวัด (Parameter)</label>
+                                <select class="form-select" id="parameterSelect" required>
+                                    <option value="">-- เลือกจุดตรวจวัด --</option>
+                                    <option value="TEMP_01 - RM Core Temperature">TEMP_01 - RM Core Temperature</option>
+                                    <option value="MAC_03 - Mixing Time">MAC_03 - Mixing Time</option>
+                                    <option value="CHEM_01 - Raw Meat pH">CHEM_01 - Raw Meat pH</option>
+                                    <option value="PHY_06 - Foreign Matter">PHY_06 - Foreign Matter (สิ่งแปลกปลอม)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ผลการตรวจ (Result Value)</label>
+                                <input type="text" class="form-control" id="resultValue" placeholder="เช่น 4.0, Pass, ไม่มีสิ่งแปลกปลอม" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ผู้ตรวจสอบ (Auditor)</label>
+                                <input type="text" class="form-control" id="auditorName" placeholder="ชื่อพนักงาน" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">บันทึกข้อมูล (Save)</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <span>📊 ข้อมูลการตรวจประเมินล่าสุด</span>
+                        <div>
+                            <button class="btn btn-sm btn-info me-2 text-white" onclick="exportToCSV()">📥 Export Excel</button>
+                            <button class="btn btn-sm btn-danger" onclick="clearData()">ล้างข้อมูล</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>เวลา (Time)</th>
+                                        <th>กระบวนการ (Process)</th>
+                                        <th>จุดตรวจวัด (Parameter)</th>
+                                        <th>ผลการตรวจ (Result)</th>
+                                        <th>ผู้ตรวจสอบ (Auditor)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadRecords);
+
+        document.getElementById('auditForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const process = document.getElementById('processSelect').value;
+            const parameter = document.getElementById('parameterSelect').value;
+            const result = document.getElementById('resultValue').value;
+            const auditor = document.getElementById('auditorName').value;
+            
+            const now = new Date();
+            const timeString = now.toLocaleString('th-TH');
+
+            const newRecord = { time: timeString, process: process, parameter: parameter, result: result, auditor: auditor };
+
+            let records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+            records.unshift(newRecord);
+            localStorage.setItem('auditRecords', JSON.stringify(records));
+
+            document.getElementById('auditForm').reset();
+            loadRecords();
+        });
+
+        function loadRecords() {
+            const records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+            const tableBody = document.getElementById('recordTableBody');
+            tableBody.innerHTML = '';
+
+            if(records.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ยังไม่มีข้อมูลการตรวจประเมิน</td></tr>';
+                return;
+            }
+
+            records.forEach(record => {
+                const row = `<tr>
+                    <td>${record.time}</td>
+                    <td>${record.process}</td>
+                    <td>${record.parameter}</td>
+                    <td><strong>${record.result}</strong></td>
+                    <td>${record.auditor}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function clearData() {
+            if(confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด?")) {
+                localStorage.removeItem('auditRecords');
+                loadRecords();
+            }
+        }
+
+        // --- ฟังก์ชันใหม่: Export เป็นไฟล์ CSV เปิดใน Excel ---
+        function exportToCSV() {
+            const records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+            if (records.length === 0) {
+                alert("ไม่มีข้อมูลสำหรับ Export ครับ กรุณาบันทึกข้อมูลก่อน");
+                return;
+            }
+
+            // เพิ่ม \uFEFF ด้านหน้าเพื่อให้ Excel อ่านภาษาไทยได้ถูกต้อง (BOM)
+            let csvContent = "\uFEFFเวลา,กระบวนการ,จุดตรวจวัด,ผลการตรวจ,ผู้ตรวจสอบ\n";
+
+            records.forEach(row => {
+                // ใส่ "" คลุมข้อความเพื่อป้องกันปัญหาเครื่องหมายลูกน้ำ (,) ในช่องกรอกข้อมูล
+                let time = `"${row.time}"`;
+                let process = `"${row.process}"`;
+                let parameter = `"${row.parameter}"`;
+                let result = `"${row.result}"`;
+                let auditor = `"${row.auditor}"`;
+
+                csvContent += `${time},${process},${parameter},${result},${auditor}\n`;
+            });
+
+            // สร้างไฟล์และสั่งดาวน์โหลด
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            // ตั้งชื่อไฟล์พร้อมวันที่
+            const dateStr = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Audit_Report_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
