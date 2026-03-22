@@ -1,0 +1,109 @@
+<script>
+    // --- เกณฑ์มาตรฐานสำหรับแต่ละ Parameter ---
+    const qcCriteria = {
+        "TEMP_01 - RM Core Temperature": { type: "number", min: 0, max: 5 }, // ตัวอย่าง: อุณหภูมิ ≤ 5°C
+        "MAC_03 - Mixing Time": { type: "number", min: 5, max: 15 }, // นาที
+        "CHEM_01 - Raw Meat pH": { type: "number", min: 5.8, max: 6.2 }, // ช่วง pH
+        "PHY_06 - Foreign Matter": { type: "text", allowed: ["ไม่มีสิ่งแปลกปลอม", "Pass"] } // ต้องไม่มีสิ่งแปลกปลอม
+    };
+
+    document.addEventListener('DOMContentLoaded', loadRecords);
+
+    document.getElementById('auditForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const process = document.getElementById('processSelect').value;
+        const parameter = document.getElementById('parameterSelect').value;
+        const result = document.getElementById('resultValue').value.trim();
+        const auditor = document.getElementById('auditorName').value.trim();
+        
+        const now = new Date();
+        const timeString = now.toLocaleString('th-TH');
+
+        const newRecord = { time: timeString, process, parameter, result, auditor };
+
+        let records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+        records.unshift(newRecord);
+        localStorage.setItem('auditRecords', JSON.stringify(records));
+
+        document.getElementById('auditForm').reset();
+        loadRecords();
+    });
+
+    function loadRecords() {
+        const records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+        const tableBody = document.getElementById('recordTableBody');
+        tableBody.innerHTML = '';
+
+        if(records.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ยังไม่มีข้อมูลการตรวจประเมิน</td></tr>';
+            return;
+        }
+
+        records.forEach(record => {
+            const isPass = checkQC(record.parameter, record.result);
+            const row = `<tr class="${isPass ? '' : 'table-danger'}">
+                <td>${record.time}</td>
+                <td>${record.process}</td>
+                <td>${record.parameter}</td>
+                <td><strong>${record.result}</strong> ${isPass ? '✅' : '❌'}</td>
+                <td>${record.auditor}</td>
+            </tr>`;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function checkQC(parameter, value) {
+        const criteria = qcCriteria[parameter];
+        if (!criteria) return true; // ถ้าไม่มีเกณฑ์ → ถือว่าผ่าน
+
+        if (criteria.type === "number") {
+            const num = parseFloat(value);
+            return !isNaN(num) && num >= criteria.min && num <= criteria.max;
+        }
+        if (criteria.type === "text") {
+            return criteria.allowed.includes(value);
+        }
+        return true;
+    }
+
+    function clearData() {
+        if(confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมด?")) {
+            localStorage.removeItem('auditRecords');
+            loadRecords();
+        }
+    }
+
+    function exportToCSV() {
+        const records = JSON.parse(localStorage.getItem('auditRecords')) || [];
+        if (records.length === 0) {
+            alert("ไม่มีข้อมูลสำหรับ Export ครับ กรุณาบันทึกข้อมูลก่อน");
+            return;
+        }
+
+        let csvContent = "\uFEFFเวลา,กระบวนการ,จุดตรวจวัด,ผลการตรวจ,ผู้ตรวจสอบ,สถานะ\n";
+
+        records.forEach(row => {
+            const isPass = checkQC(row.parameter, row.result) ? "Pass" : "Fail";
+            let time = `"${row.time}"`;
+            let process = `"${row.process}"`;
+            let parameter = `"${row.parameter}"`;
+            let result = `"${row.result}"`;
+            let auditor = `"${row.auditor}"`;
+
+            csvContent += `${time},${process},${parameter},${result},${auditor},${isPass}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Audit_Report_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
