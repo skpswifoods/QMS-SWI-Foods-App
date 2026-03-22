@@ -1,0 +1,36 @@
+<div class="card-body p-2">
+    <!-- Filter Section -->
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <select class="form-select" id="filterProcess" onchange="loadRecords()">
+                <option value="">-- Filter Process --</option>
+                <option value="PC0001 - รับวัตถุดิบ">PC0001 - รับวัตถุดิบ</option>
+                <option value="PC0009 - นวดผสม">PC0009 - นวดผสม</option>
+                <option value="PC0011 - บ่ม / หมัก">PC0011 - บ่ม / หมัก</option>
+                <option value="PC0015 - ซีลปิดปากถุง">PC0015 - ซีลปิดปากถุง</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="filterStatus" onchange="loadRecords()">
+                <option value="">-- Filter Status --</option>
+                <option value="Pass">Pass ✅</option>
+                <option value="Fail">Fail ❌</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>เวลา</th>
+                    <th>กระบวนการ</th>
+                    <th>จุดตรวจวัด</th>
+                    <th>ผลการตรวจ</th>
+                    <th>ผู้ตรวจสอบ</th>
+                </tr>
+            </thead>
+            <tbody id="recordTableBody"></tbody>
+        </table>
+    </div>
+</div>
